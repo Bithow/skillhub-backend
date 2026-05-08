@@ -70,6 +70,25 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
+// One-time admin password reset (remove after use)
+app.post('/admin-reset', async (req, res) => {
+    try {
+        const User = require('./models/User');
+        const bcrypt = require('bcryptjs');
+        const salt = await bcrypt.genSalt(10);
+        const hashed = await bcrypt.hash('Admin123456', salt);
+        const result = await User.findOneAndUpdate(
+            { email: 'admin@skillhub.com' },
+            { password: hashed, role: 'admin', status: 'active' },
+            { new: true }
+        );
+        if (!result) return res.json({ success: false, message: 'Admin not found' });
+        res.json({ success: true, message: 'Admin password reset to Admin123456' });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 // Health check
 app.get('/health', (req, res) => {
     res.status(200).json({
