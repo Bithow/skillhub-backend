@@ -77,13 +77,24 @@ app.post('/admin-reset', async (req, res) => {
         const bcrypt = require('bcryptjs');
         const salt = await bcrypt.genSalt(10);
         const hashed = await bcrypt.hash('Admin123456', salt);
-        const result = await User.findOneAndUpdate(
+        // Try to find by email first
+        let result = await User.findOneAndUpdate(
             { email: 'admin@skillhub.com' },
             { password: hashed, role: 'admin', status: 'active' },
             { new: true }
         );
-        if (!result) return res.json({ success: false, message: 'Admin not found' });
-        res.json({ success: true, message: 'Admin password reset to Admin123456' });
+        if (!result) {
+            // Create fresh admin
+            result = await User.create({
+                name: 'SkillHub Admin',
+                email: 'admin@skillhub.com',
+                phone: '256000000001',
+                password: 'Admin123456',
+                role: 'admin',
+                status: 'active'
+            });
+        }
+        res.json({ success: true, message: 'Admin ready. Email: admin@skillhub.com Password: Admin123456' });
     } catch (e) {
         res.json({ success: false, message: e.message });
     }
