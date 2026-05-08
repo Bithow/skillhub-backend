@@ -88,7 +88,7 @@ app.post('/admin-reset', async (req, res) => {
             result = await User.create({
                 name: 'SkillHub Admin',
                 email: 'admin@skillhub.com',
-                phone: '256000000001',
+                phone: '0911000001',
                 password: 'Admin123456',
                 role: 'admin',
                 status: 'active'
