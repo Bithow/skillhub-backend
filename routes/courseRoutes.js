@@ -49,4 +49,33 @@ router.delete('/:id', protect, deleteCourse);
 router.post('/:id/purchase', protect, purchaseCourse);
 router.post('/:id/review', protect, addReview);
 
+// Discussion endpoints
+router.post('/:id/discussion', protect, async (req, res) => {
+    try {
+        const Course = require('../models/Course');
+        const course = await Course.findById(req.params.id);
+        if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+        course.discussion.push({
+            userId: req.user._id,
+            userName: req.user.name,
+            message: req.body.message
+        });
+        await course.save();
+        res.json({ success: true, discussion: course.discussion });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+router.get('/:id/discussion', async (req, res) => {
+    try {
+        const Course = require('../models/Course');
+        const course = await Course.findById(req.params.id).select('discussion title');
+        if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+        res.json({ success: true, discussion: course.discussion });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 module.exports = router;

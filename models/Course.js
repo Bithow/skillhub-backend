@@ -43,8 +43,10 @@ const courseSchema = new mongoose.Schema({
         title: String,
         description: String,
         videoUrl: String,
+        pdfUrl: String,
         duration: Number,
-        order: Number
+        order: Number,
+        isFree: { type: Boolean, default: false }
     }],
     instructorId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -92,7 +94,12 @@ const courseSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now }
     }],
     tags: [String],
-    isFeatured: {
+    discussion: [{
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        userName: String,
+        message: String,
+        createdAt: { type: Date, default: Date.now }
+    }],
         type: Boolean,
         default: false
     },
