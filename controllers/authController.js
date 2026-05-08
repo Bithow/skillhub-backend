@@ -26,7 +26,11 @@ const register = async (req, res) => {
             phone,
             password,
             role,
-            status: 'active'  // All users active immediately
+            status: 'active',  // All users active immediately
+            country: req.body.country || 'ET',
+            bio: req.body.bio || '',
+            skills: req.body.skills || [],
+            profilePicture: req.body.profilePicture || ''
         });
 
         // Auto-create freelancer profile if role is freelancer
@@ -34,10 +38,11 @@ const register = async (req, res) => {
             const Freelancer = require('../models/Freelancer');
             await Freelancer.create({
                 userId: user._id,
-                title: 'Freelance Professional',
-                skills: [],
-                hourlyRate: 100,
-                status: 'pending',  // Pending badge shown on profile
+                title: req.body.expertise || 'Freelance Professional',
+                skills: req.body.skills || [],
+                hourlyRate: req.body.hourlyRate || 100,
+                portfolio: req.body.portfolio ? [{ title: 'Portfolio', projectUrl: req.body.portfolio }] : [],
+                status: 'pending',
                 availability: 'available'
             });
         }
