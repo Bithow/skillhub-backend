@@ -19,15 +19,28 @@ const register = async (req, res) => {
             });
         }
 
-        // Create user
+        // Create user — freelancers and instructors are auto-approved with pending badge
         const user = await User.create({
             name,
             email,
             phone,
             password,
             role,
-            status: role === 'admin' ? 'active' : 'pending'
+            status: 'active'  // All users active immediately
         });
+
+        // Auto-create freelancer profile if role is freelancer
+        if (role === 'freelancer') {
+            const Freelancer = require('../models/Freelancer');
+            await Freelancer.create({
+                userId: user._id,
+                title: 'Freelance Professional',
+                skills: [],
+                hourlyRate: 100,
+                status: 'pending',  // Pending badge shown on profile
+                availability: 'available'
+            });
+        }
 
         // Handle referral
         if (referralCode) {
@@ -53,8 +66,9 @@ const register = async (req, res) => {
         }
 
         // Send WhatsApp notification to admin
+        const roleEmoji = role === 'instructor' ? '👨‍🏫' : role === 'freelancer' ? '💼' : '🎓';
         await WhatsAppService.sendToAdmin(
-            `📝 New Registration!\nName: ${name}\nRole: ${role}\nPhone: ${phone}\nStatus: Pending approval`
+            `${roleEmoji} New ${role} joined SkillHub!\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nRole: ${role}\n\nThey are now active. Review their profile at:\n${process.env.FRONTEND_URL || 'https://remarkable-semolina-273e83.netlify.app'}`
         );
 
         // Generate token
