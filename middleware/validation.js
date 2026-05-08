@@ -18,7 +18,7 @@ const userValidation = {
         body('email').isEmail().withMessage('Please enter a valid email'),
         body('phone').notEmpty().withMessage('Phone number is required'),
         body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-        body('role').isIn(['user', 'instructor', 'freelancer']).withMessage('Invalid role')
+        body('role').isIn(['user', 'instructor', 'freelancer', 'admin']).withMessage('Invalid role')
     ],
     login: [
         body('email').isEmail().withMessage('Please enter a valid email'),
