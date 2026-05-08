@@ -110,15 +110,18 @@ const approveUser = async (req, res) => {
         user.status = 'active';
         await user.save();
         
-        // Create freelancer profile if role is freelancer
+        // If freelancer — also activate their freelancer profile
         if (user.role === 'freelancer') {
-            await Freelancer.create({
-                userId: user._id,
-                title: 'Freelance Professional',
-                skills: [],
-                hourlyRate: 100,
-                status: 'approved'
-            });
+            const Freelancer = require('../models/Freelancer');
+            await Freelancer.findOneAndUpdate(
+                { userId: user._id },
+                { status: 'approved' }
+            );
+        }
+        
+        // If instructor — create freelancer profile if not exists
+        if (user.role === 'instructor') {
+            // Instructors don't need a freelancer profile, just activate user
         }
         
         // Send WhatsApp notification

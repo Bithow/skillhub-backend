@@ -19,21 +19,21 @@ const register = async (req, res) => {
             });
         }
 
-        // Create user — freelancers and instructors are auto-approved with pending badge
+        // Create user — learners active immediately, instructors/freelancers need admin approval
         const user = await User.create({
             name,
             email,
             phone,
             password,
             role,
-            status: 'active',  // All users active immediately
+            status: (role === 'user' || role === 'admin') ? 'active' : 'pending',
             country: req.body.country || 'ET',
             bio: req.body.bio || '',
             skills: req.body.skills || [],
             profilePicture: req.body.profilePicture || ''
         });
 
-        // Auto-create freelancer profile if role is freelancer
+        // Auto-create freelancer profile if role is freelancer (pending until admin approves)
         if (role === 'freelancer') {
             const Freelancer = require('../models/Freelancer');
             await Freelancer.create({
