@@ -44,17 +44,13 @@ const allowedOrigins = [
     'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://127.0.0.1:3000',
-    'http://192.168.137.1:5500', // Local network access
-    'http://192.168.40.1:5500',  // Alternative network
-    'http://10.150.130.122:5500' // Alternative network
+    'http://192.168.137.1:5500',
+    'https://remarkable-semolina-273e83.netlify.app'
 ].filter(Boolean);
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, Postman)
-        // Also allow null origin which browsers send for file:// pages
-        // Allow any local network IP for development
-        if (!origin || origin === 'null' || allowedOrigins.includes(origin) || /^http:\/\/192\.168\.\d+\.\d+/.test(origin)) {
+        if (!origin || origin === 'null' || allowedOrigins.includes(origin) || /^http:\/\/192\.168\.\d+\.\d+/.test(origin) || /\.netlify\.app$/.test(origin)) {
             callback(null, true);
         } else {
             callback(new Error(`CORS: origin ${origin} not allowed`));
