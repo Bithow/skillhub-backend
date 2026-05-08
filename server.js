@@ -71,36 +71,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
-// One-time admin password reset (remove after use)
-app.post('/admin-reset', async (req, res) => {
-    try {
-        const User = require('./models/User');
-        const bcrypt = require('bcryptjs');
-        const salt = await bcrypt.genSalt(10);
-        const hashed = await bcrypt.hash('Admin123456', salt);
-        // Try to find by email first
-        let result = await User.findOneAndUpdate(
-            { email: 'admin@skillhub.com' },
-            { password: hashed, role: 'admin', status: 'active' },
-            { new: true }
-        );
-        if (!result) {
-            // Create fresh admin
-            result = await User.create({
-                name: 'SkillHub Admin',
-                email: 'admin@skillhub.com',
-                phone: '0911000001',
-                password: 'Admin123456',
-                role: 'admin',
-                status: 'active'
-            });
-        }
-        res.json({ success: true, message: 'Admin ready. Email: admin@skillhub.com Password: Admin123456' });
-    } catch (e) {
-        res.json({ success: false, message: e.message });
-    }
-});
-
 // Health check
 app.get('/health', (req, res) => {
     res.status(200).json({
