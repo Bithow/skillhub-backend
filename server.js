@@ -45,7 +45,8 @@ const allowedOrigins = [
     'http://127.0.0.1:5500',
     'http://127.0.0.1:3000',
     'http://192.168.137.1:5500',
-    'https://remarkable-semolina-273e83.netlify.app'
+    'https://remarkable-semolina-273e83.netlify.app',
+    'https://skillhub-platform.netlify.app'
 ].filter(Boolean);
 
 app.use(cors({
