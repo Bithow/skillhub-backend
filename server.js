@@ -15,6 +15,7 @@ const freelancerRoutes = require('./routes/freelancerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 // Initialize app
 const app = express();
@@ -70,6 +71,7 @@ app.use('/api/freelancers', freelancerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

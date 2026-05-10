@@ -27,7 +27,9 @@ const userValidation = {
     updateProfile: [
         body('name').optional().isLength({ min: 2 }),
         body('bio').optional().isLength({ max: 500 }),
-        body('skills').optional().isArray()
+        body('skills').optional().isArray(),
+        body('phone').optional().notEmpty(),
+        body('country').optional().isLength({ min: 2, max: 3 })
     ]
 };
 

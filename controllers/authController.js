@@ -194,14 +194,23 @@ const getMe = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
     try {
-        const { name, bio, skills, profilePicture } = req.body;
+        const { name, bio, skills, profilePicture, phone, country } = req.body;
         
         const user = await User.findById(req.user._id);
         
         if (name) user.name = name;
-        if (bio) user.bio = bio;
+        if (bio !== undefined) user.bio = bio;
         if (skills) user.skills = skills;
-        if (profilePicture) user.profilePicture = profilePicture;
+        if (profilePicture !== undefined) user.profilePicture = profilePicture;
+        if (phone) {
+            // Check phone not taken by another user
+            const phoneExists = await User.findOne({ phone, _id: { $ne: user._id } });
+            if (phoneExists) {
+                return res.status(400).json({ success: false, message: 'Phone number already in use' });
+            }
+            user.phone = phone;
+        }
+        if (country) user.country = country.toUpperCase();
         
         await user.save();
 
@@ -211,6 +220,8 @@ const updateProfile = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
+                phone: user.phone,
+                country: user.country,
                 bio: user.bio,
                 skills: user.skills,
                 profilePicture: user.profilePicture
