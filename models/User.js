@@ -19,14 +19,16 @@ const userSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
-        required: [true, 'Phone number is required'],
+        required: false,
         unique: true,
+        sparse: true,
         validate: {
             validator: function(v) {
-                // Ethiopian phone validation: 251XXXXXXXXX or 09XXXXXXXX
-                return /^(251|09|07)\d{8,9}$/.test(v.replace(/\D/g, ''));
+                if (!v) return true; // phone is optional
+                // Accept any international phone number (7-15 digits, optional + prefix)
+                return /^\+?\d{7,15}$/.test(v.replace(/[\s\-\(\)]/g, ''));
             },
-            message: 'Please enter a valid Ethiopian phone number'
+            message: 'Please enter a valid phone number'
         }
     },
     password: {

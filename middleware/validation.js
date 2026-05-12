@@ -16,7 +16,7 @@ const userValidation = {
     register: [
         body('name').notEmpty().withMessage('Name is required').isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
         body('email').isEmail().withMessage('Please enter a valid email'),
-        body('phone').notEmpty().withMessage('Phone number is required'),
+        body('phone').optional({ nullable: true, checkFalsy: true }),
         body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
         body('role').isIn(['user', 'instructor', 'freelancer', 'admin']).withMessage('Invalid role')
     ],

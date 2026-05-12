@@ -11,12 +11,21 @@ const register = async (req, res) => {
         const { name, email, phone, password, role, referralCode } = req.body;
 
         // Check if user exists
-        const userExists = await User.findOne({ $or: [{ email }, { phone }] });
-        if (userExists) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists) {
             return res.status(400).json({
                 success: false,
-                message: 'User already exists with this email or phone'
+                message: 'An account with this email already exists. Please login instead.'
             });
+        }
+        if (phone) {
+            const phoneExists = await User.findOne({ phone });
+            if (phoneExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This phone number is already registered. Please use a different number.'
+                });
+            }
         }
 
         // Create user — learners active immediately, instructors/freelancers need admin approval
