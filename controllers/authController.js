@@ -10,7 +10,7 @@ const register = async (req, res) => {
     try {
         const { name, email, phone, password, role, referralCode } = req.body;
 
-        // Check if user exists
+        // Check if user exists — give specific messages
         const emailExists = await User.findOne({ email });
         if (emailExists) {
             return res.status(400).json({
@@ -23,7 +23,7 @@ const register = async (req, res) => {
             if (phoneExists) {
                 return res.status(400).json({
                     success: false,
-                    message: 'This phone number is already registered. Please use a different number.'
+                    message: 'This phone number is already registered. Please use a different number or leave it blank.'
                 });
             }
         }

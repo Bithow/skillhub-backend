@@ -24,11 +24,11 @@ const userSchema = new mongoose.Schema({
         sparse: true,
         validate: {
             validator: function(v) {
-                if (!v) return true; // phone is optional
-                // Accept any international phone number (7-15 digits, optional + prefix)
+                if (!v) return true;
+                // Accept any international phone number
                 return /^\+?\d{7,15}$/.test(v.replace(/[\s\-\(\)]/g, ''));
             },
-            message: 'Please enter a valid phone number'
+            message: 'Please enter a valid phone number (7-15 digits)'
         }
     },
     password: {
