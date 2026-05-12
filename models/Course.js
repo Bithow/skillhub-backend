@@ -100,6 +100,7 @@ const courseSchema = new mongoose.Schema({
         message: String,
         createdAt: { type: Date, default: Date.now }
     }],
+    isFeatured: {
         type: Boolean,
         default: false
     },
