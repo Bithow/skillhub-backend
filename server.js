@@ -52,8 +52,11 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow all origins — frontend is public static site
-        callback(null, true);
+        if (!origin || origin === 'null' || allowedOrigins.includes(origin) || /^http:\/\/192\.168\.\d+\.\d+/.test(origin) || /\.netlify\.app$/.test(origin) || /\.vercel\.app$/.test(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS: origin ${origin} not allowed`));
+        }
     },
     credentials: true
 }));

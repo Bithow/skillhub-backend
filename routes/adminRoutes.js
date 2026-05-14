@@ -14,10 +14,6 @@ const {
     updateTransactionStatus,
     sendBroadcast
 } = require('../controllers/adminController');
-const {
-    adminGetAllConversations,
-    adminGetConversation
-} = require('../controllers/chatController');
 
 // All admin routes require authentication + admin role
 router.use(protect);
@@ -35,9 +31,5 @@ router.put('/reject-course/:id', rejectCourse);
 router.put('/transactions/:id/status', updateTransactionStatus);
 
 router.post('/broadcast', sendBroadcast);
-
-// Admin chat monitoring
-router.get('/chats', adminGetAllConversations);
-router.get('/chats/:conversationId', adminGetConversation);
 
 module.exports = router;
