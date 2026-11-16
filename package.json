@@ -15,7 +15,7 @@
     "migrate:mongodb": "node scripts/migrate-mongodb-to-postgres.js"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "6.19.3",
     "axios": "^1.5.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -32,7 +32,7 @@
   "devDependencies": {
     "mongoose": "^7.5.0",
     "nodemon": "^3.0.1",
-    "prisma": "^6.19.3",
+    "prisma": "6.19.3",
     "supertest": "^7.3.1"
   },
   "overrides": {
