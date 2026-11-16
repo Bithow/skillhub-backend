@@ -1,0 +1,467 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(cuid())
+  name            String
+  email           String         @unique
+  username        String?        @unique
+  phone           String?        @unique
+  password        String
+  role            String         @default("user")
+  adminRole       String?        @default("super_admin")
+  adminPermissions Json          @default("[]")
+  status          String         @default("pending")
+  country         String         @default("ET")
+  walletBalance   Float          @default(0)
+  profilePicture  String?
+  bio             String?
+  skills          String[]       @default([])
+  rating          Float          @default(0)
+  totalReviews    Int            @default(0)
+  completedJobs   Int            @default(0)
+  referralCode    String?        @unique
+  referredById    String?
+  lastLogin       DateTime?
+  resetCode       String?
+  resetCodeExpires DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  referredBy      User?          @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals       User[]         @relation("UserReferrals")
+  courses         Course[]       @relation("CourseInstructor")
+  freelancer      Freelancer?
+  enrollments     Enrollment[]
+  transactions    Transaction[]
+  ledgerEntries   FinancialLedgerEntry[]
+  clientProjects  FreelanceProject[] @relation("FreelanceProjectClient")
+  freelancerProjects FreelanceProject[] @relation("FreelanceProjectFreelancer")
+  freelancePaymentReports FreelancePaymentReport[] @relation("FreelancePaymentReporter")
+  refundRequests  RefundRequest[]
+  withdrawalRequests WithdrawalRequest[]
+  sentMessages    Message[]      @relation("MessageSender")
+  receivedMessages Message[]     @relation("MessageReceiver")
+  whatsappResponses WhatsAppMessage[] @relation("WhatsAppResponder")
+  hireRequests     HireRequest[]  @relation("HireRequestClient")
+  typingSent       ChatTyping[]   @relation("TypingSender")
+  typingReceived   ChatTyping[]   @relation("TypingReceiver")
+  adminAuditLogs   AdminAuditLog[] @relation("AdminAuditActor")
+  aiStudioJobs    AiProductionJob[] @relation("AiStudioJobCreator")
+  aiUsageRecords  AiUsageRecord[] @relation("AiUsageActor")
+
+  @@index([role, status])
+  @@index([createdAt])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String?
+  action      String
+  targetType  String?
+  targetId    String?
+  summary     String
+  details     Json     @default("{}")
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  adminUser   User?    @relation("AdminAuditActor", fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId, createdAt])
+  @@index([targetType, targetId])
+}
+
+model Course {
+  id               String       @id @default(cuid())
+  title            String
+  description      String
+  shortDescription String?
+  price            Float
+  category         String
+  subcategory      String?
+  level            String       @default("beginner")
+  duration         Float?
+  lessons          Json         @default("[]")
+  certificateEligible Boolean   @default(true)
+  instructorId     String
+  instructorName   String?
+  instructorPhone  String?
+  thumbnail        String?
+  promoVideo       String?
+  status           String       @default("pending")
+  rejectionReason  String?
+  studentCount     Int          @default(0)
+  rating           Float        @default(0)
+  reviewCount      Int          @default(0)
+  reviews          Json         @default("[]")
+  tags             String[]     @default([])
+  discussion       Json         @default("[]")
+  isFeatured       Boolean      @default(false)
+  views            Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  instructor       User         @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  students         Enrollment[]
+  transactions     Transaction[]
+  aiProductionJobs AiProductionJob[]
+
+  @@index([status, createdAt])
+  @@index([instructorId, status])
+  @@index([category, price])
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  courseId   String
+  userId     String
+  enrolledAt DateTime @default(now())
+  progress   Float    @default(0)
+  completed  Boolean  @default(false)
+  completedLessons Int[] @default([])
+  completedAt DateTime?
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId, enrolledAt])
+}
+
+model Freelancer {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  title              String
+  skills             String[] @default([])
+  experience         String   @default("junior")
+  yearsOfExperience  Int?
+  hourlyRate         Float
+  portfolio          Json     @default("[]")
+  availability       String   @default("available")
+  preferredProjects  String[] @default([])
+  languages          Json     @default("[]")
+  education          Json     @default("[]")
+  certifications     Json     @default("[]")
+  status             String   @default("pending")
+  verificationStatus String   @default("unverified")
+  totalJobs          Int      @default(0)
+  completedJobs      Int      @default(0)
+  rating             Float    @default(0)
+  responseTime       Float    @default(24)
+  isVerified         Boolean  @default(false)
+  isFeatured         Boolean  @default(false)
+  featuredUntil      DateTime?
+  views              Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions       Transaction[]
+  hireRequests       HireRequest[] @relation("HireRequestFreelancer")
+
+  @@index([status, rating])
+  @@index([hourlyRate])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String
+  amount        Float
+  currency      String   @default("USD")
+  commission    Float    @default(0)
+  netAmount     Float
+  status        String   @default("pending")
+  isSimulated   Boolean  @default(false)
+  paymentMethod String
+  reference     String   @unique
+  description   String?
+  metadata      Json     @default("{}")
+  courseId      String?
+  freelancerId  String?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  course        Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  freelancer    Freelancer? @relation(fields: [freelancerId], references: [id], onDelete: SetNull)
+  ledgerEntries FinancialLedgerEntry[]
+  refundRequests RefundRequest[]
+
+  @@index([userId, createdAt])
+  @@index([status, type, createdAt])
+  @@index([courseId])
+}
+
+model FinancialLedgerEntry {
+  id            String      @id @default(cuid())
+  userId        String?
+  transactionId String?
+  account       String
+  entryType     String
+  amount        Float
+  currency      String      @default("USD")
+  status        String
+  isSimulated   Boolean     @default(false)
+  relatedType   String?
+  relatedId     String?
+  metadata      Json        @default("{}")
+  createdAt     DateTime    @default(now())
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([account, status, createdAt])
+  @@index([transactionId])
+  @@index([relatedType, relatedId])
+}
+
+model FreelanceProject {
+  id                  String   @id @default(cuid())
+  reference           String   @unique
+  clientId            String
+  freelancerId        String
+  title               String
+  description         String
+  budget              Float
+  currency            String   @default("USD")
+  commissionPercent   Float
+  commissionAmount    Float
+  freelancerNetAmount Float
+  paymentArrangement  String   @default("direct_external")
+  milestones          Json     @default("[]")
+  status              String   @default("active")
+  completionStatus    String   @default("not_started")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  client              User     @relation("FreelanceProjectClient", fields: [clientId], references: [id], onDelete: Restrict)
+  freelancer          User     @relation("FreelanceProjectFreelancer", fields: [freelancerId], references: [id], onDelete: Restrict)
+  paymentReports      FreelancePaymentReport[]
+
+  @@index([clientId, status, createdAt])
+  @@index([freelancerId, status, createdAt])
+}
+
+model FreelancePaymentReport {
+  id                        String   @id @default(cuid())
+  reference                 String   @unique
+  projectId                 String
+  reporterId                String
+  amount                    Float
+  currency                  String   @default("USD")
+  paymentDate               DateTime
+  paymentMethodDescription  String
+  transactionReference      String?
+  evidence                  String?
+  status                    String   @default("awaiting_client")
+  clientResponse            String?
+  adminNote                 String?
+  commissionPercent         Float
+  commissionAmount          Float
+  freelancerNetAmount       Float
+  reportedAt                DateTime @default(now())
+  reviewedAt                DateTime?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  project                   FreelanceProject @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  reporter                  User     @relation("FreelancePaymentReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, status, reportedAt])
+  @@index([reporterId, reportedAt])
+  @@index([status, reportedAt])
+}
+
+model RefundRequest {
+  id            String   @id @default(cuid())
+  reference     String   @unique
+  transactionId String
+  userId        String
+  reason        String
+  description   String?
+  status        String   @default("requested")
+  adminNote     String?
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model WithdrawalRequest {
+  id                String   @id @default(cuid())
+  reference         String   @unique
+  userId            String
+  amount            Float
+  currency          String   @default("USD")
+  payoutMethod      String
+  destinationMasked String?
+  status            String   @default("requested")
+  decisionReason    String?
+  adminNote         String?
+  payoutReference   String?
+  isSimulated       Boolean  @default(true)
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model Message {
+  id                String   @id @default(cuid())
+  conversationId    String
+  senderId          String
+  receiverId        String
+  content           String
+  type              String   @default("text")
+  fileUrl           String?
+  fileName          String?
+  read              Boolean  @default(false)
+  readAt            DateTime?
+  deletedBySender   Boolean  @default(false)
+  deletedByReceiver Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  sender            User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver          User     @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([receiverId, read])
+}
+
+model WhatsAppMessage {
+  id           String   @id @default(cuid())
+  messageId    String?  @unique
+  from         String
+  to           String
+  message      String
+  type         String   @default("inquiry")
+  status       String   @default("sent")
+  relatedId    String?
+  relatedModel String?
+  response     String?
+  respondedAt  DateTime?
+  respondedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  respondedBy  User?    @relation("WhatsAppResponder", fields: [respondedById], references: [id], onDelete: SetNull)
+
+  @@index([from, createdAt])
+  @@index([status])
+}
+
+model HireRequest {
+  id           String     @id @default(cuid())
+  clientId     String
+  freelancerId String
+  message      String
+  status       String     @default("pending")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  client       User       @relation("HireRequestClient", fields: [clientId], references: [id], onDelete: Cascade)
+  freelancer   Freelancer @relation("HireRequestFreelancer", fields: [freelancerId], references: [id], onDelete: Cascade)
+
+  @@index([freelancerId, status, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model SiteVisit {
+  id         String   @id @default(cuid())
+  visitorKey String
+  path       String
+  deviceType String
+  referrer   String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([visitorKey, createdAt])
+  @@index([path, createdAt])
+}
+
+model AiProductionJob {
+  id            String   @id @default(cuid())
+  createdById   String
+  courseId      String?
+  jobType       String   @default("course_generation")
+  status        String   @default("queued")
+  phase         String   @default("queued")
+  progress      Int      @default(0)
+  input         Json
+  output        Json?
+  error         String?
+  attemptCount  Int      @default(0)
+  maxAttempts   Int      @default(2)
+  provider      String?
+  model         String?
+  estimatedCost Float?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     User     @relation("AiStudioJobCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  course        Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  usageRecords  AiUsageRecord[]
+
+  @@index([status, createdAt])
+  @@index([createdById, createdAt])
+  @@index([courseId])
+}
+
+model AiUsageRecord {
+  id           String   @id @default(cuid())
+  jobId        String?
+  userId       String?
+  provider     String
+  model        String
+  operation    String
+  status       String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  estimatedCost Float?
+  error        String?
+  createdAt    DateTime @default(now())
+  job          AiProductionJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  user         User?    @relation("AiUsageActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt, status])
+  @@index([jobId])
+}
+
+model ChatTyping {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  expiresAt  DateTime
+  sender     User     @relation("TypingSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("TypingReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, expiresAt])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+}

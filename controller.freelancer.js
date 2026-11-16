@@ -36,7 +36,7 @@ const createFreelancerProfile = async (req, res) => {
         
         // Notify admin
         await WhatsAppService.sendToAdmin(
-            `👨‍💻 New Freelancer Registration\nName: ${req.user.name}\nSkills: ${skills.join(', ')}\nRate: ${hourlyRate} ETB/hr`
+            `👨‍💻 New Freelancer Registration\nName: ${req.user.name}\nSkills: ${skills.join(', ')}\nRate: $${Number(hourlyRate).toFixed(2)} USD/hr`
         );
         
         res.status(201).json({
@@ -204,13 +204,13 @@ const contactFreelancer = async (req, res) => {
             });
         }
         
-        const contactFee = 15; // 15 ETB contact fee
+        const contactFee = 15;
         
         // Check if user has enough wallet balance
         if (req.user.walletBalance < contactFee) {
             return res.status(400).json({
                 success: false,
-                message: `Insufficient balance. Please add ${contactFee} ETB to your wallet`,
+                message: `Insufficient balance. Please add $${contactFee.toFixed(2)} USD to your wallet`,
                 requiredAmount: contactFee,
                 currentBalance: req.user.walletBalance
             });

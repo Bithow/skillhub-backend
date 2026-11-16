@@ -1,0 +1,3 @@
+ALTER TABLE "Enrollment"
+ADD COLUMN "completedLessons" INTEGER[] NOT NULL DEFAULT ARRAY[]::INTEGER[],
+ADD COLUMN "completedAt" TIMESTAMP(3);

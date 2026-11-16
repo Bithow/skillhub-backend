@@ -69,7 +69,7 @@ const processIncomingMessage = async (message, contact) => {
             if (courses.length > 0) {
                 reply = `📚 *Top Courses*\n\n`;
                 courses.forEach((course, index) => {
-                    reply += `${index + 1}. *${course.title}*\n   💰 ${course.price} ETB\n   👨‍🏫 ${course.instructorName}\n   🔗 ${process.env.FRONTEND_URL}/courses/${course._id}\n\n`;
+                    reply += `${index + 1}. *${course.title}*\n   💰 $${Number(course.price).toFixed(2)} USD\n   👨‍🏫 ${course.instructorName}\n   🔗 ${process.env.FRONTEND_URL}/courses/${course._id}\n\n`;
                 });
             }
         }
@@ -85,7 +85,7 @@ const processIncomingMessage = async (message, contact) => {
             if (freelancers.length > 0) {
                 reply = `👨‍💻 *Top Freelancers*\n\n`;
                 freelancers.forEach((freelancer, index) => {
-                    reply += `${index + 1}. *${freelancer.userId.name}*\n   💰 ${freelancer.hourlyRate} ETB/hr\n   🛠️ ${freelancer.skills.slice(0, 3).join(', ')}\n   🔗 ${process.env.FRONTEND_URL}/freelancers/${freelancer._id}\n\n`;
+                    reply += `${index + 1}. *${freelancer.userId.name}*\n   💰 $${Number(freelancer.hourlyRate).toFixed(2)} USD/hr\n   🛠️ ${freelancer.skills.slice(0, 3).join(', ')}\n   🔗 ${process.env.FRONTEND_URL}/freelancers/${freelancer._id}\n\n`;
                 });
             }
         }
@@ -97,16 +97,17 @@ const processIncomingMessage = async (message, contact) => {
         // Find user by phone
         const user = await User.findOne({ phone: from });
         if (user) {
-            reply = `💰 *Your Wallet*\n\nBalance: ${user.walletBalance} ETB\n\nReply "withdraw [amount]" to request withdrawal\nMinimum withdrawal: 100 ETB`;
+            reply = `💰 *Your Wallet*\n\nBalance: $${Number(user.walletBalance).toFixed(2)} USD\n\nReply "withdraw [amount]" to request withdrawal\nMinimum withdrawal: $5.00 USD`;
         } else {
             reply = `🔐 Please register on SkillHub first: ${process.env.FRONTEND_URL}/register`;
         }
     }
     else if (lowerText.startsWith('withdraw')) {
-        const amount = parseInt(lowerText.replace('withdraw', '').trim());
+        const withdrawalMatch = lowerText.match(/^withdraw\s+\$?(\d+(?:\.\d{1,2})?)$/i);
+        const amount = withdrawalMatch ? Number(withdrawalMatch[1]) : Number.NaN;
         const user = await User.findOne({ phone: from });
         
-        if (user && amount && amount >= 100 && amount <= user.walletBalance) {
+        if (user && Number.isFinite(amount) && amount >= 5 && amount <= user.walletBalance) {
             await Transaction.create({
                 userId: user._id,
                 type: 'withdrawal',
@@ -117,11 +118,11 @@ const processIncomingMessage = async (message, contact) => {
                 metadata: { whatsappMessageId: whatsappMessage._id }
             });
             
-            reply = `✅ Withdrawal request of ${amount} ETB submitted. Admin will process within 24 hours.`;
+            reply = `✅ Withdrawal request of $${amount.toFixed(2)} USD submitted. Admin will process within 24 hours.`;
         } else if (user && amount && amount > user.walletBalance) {
-            reply = `❌ Insufficient balance. Your balance is ${user.walletBalance} ETB.`;
+            reply = `❌ Insufficient balance. Your balance is $${Number(user.walletBalance).toFixed(2)} USD.`;
         } else {
-            reply = `❌ Invalid amount. Minimum withdrawal: 100 ETB\nExample: "withdraw 500"`;
+            reply = `❌ Invalid amount. Minimum withdrawal: $5.00 USD\nExample: "withdraw 5.00"`;
         }
     }
     else if (lowerText.includes('help') || lowerText.includes('menu')) {

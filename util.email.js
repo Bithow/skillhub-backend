@@ -77,7 +77,7 @@ class EmailService {
                 <h2>Course Purchase Confirmed!</h2>
                 <p>You have successfully purchased:</p>
                 <h3>${course.title}</h3>
-                <p>Amount: ${course.price} ETB</p>
+                <p>Amount: $${Number(course.price).toFixed(2)} USD</p>
                 <a href="${process.env.FRONTEND_URL}/my-courses">Access your course →</a>
             </div>
         `;

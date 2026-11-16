@@ -77,14 +77,15 @@ const requestWithdrawal = async (req, res) => {
     try {
         const { amount, phoneNumber, method } = req.body;
         
-        if (amount < 100) {
+        if (!Number.isFinite(Number(amount)) || Number(amount) < 5) {
             return res.status(400).json({
                 success: false,
-                message: 'Minimum withdrawal amount is 100 ETB'
+                message: 'Minimum withdrawal amount is $5.00 USD'
             });
         }
+        const withdrawalAmount = Number(amount);
         
-        if (req.user.walletBalance < amount) {
+        if (req.user.walletBalance < withdrawalAmount) {
             return res.status(400).json({
                 success: false,
                 message: 'Insufficient wallet balance'
@@ -94,8 +95,8 @@ const requestWithdrawal = async (req, res) => {
         const transaction = await Transaction.create({
             userId: req.user._id,
             type: 'withdrawal',
-            amount: amount,
-            netAmount: amount,
+            amount: withdrawalAmount,
+            netAmount: withdrawalAmount,
             status: 'pending',
             paymentMethod: method || 'telebirr',
             metadata: { phoneNumber: phoneNumber || req.user.phone }
@@ -103,7 +104,7 @@ const requestWithdrawal = async (req, res) => {
         
         // Notify admin for manual processing
         await WhatsAppService.sendToAdmin(
-            `💰 Withdrawal Request\nUser: ${req.user.name}\nAmount: ${amount} ETB\nPhone: ${phoneNumber || req.user.phone}\nReference: ${transaction.reference}`
+            `💰 Withdrawal Request\nUser: ${req.user.name}\nAmount: $${withdrawalAmount.toFixed(2)} USD\nPhone: ${phoneNumber || req.user.phone}\nReference: ${transaction.reference}`
         );
         
         res.json({
@@ -158,28 +159,29 @@ const addFunds = async (req, res) => {
     try {
         const { amount, paymentMethod } = req.body;
         
-        if (amount < 10) {
+        if (!Number.isFinite(Number(amount)) || Number(amount) < 1) {
             return res.status(400).json({
                 success: false,
-                message: 'Minimum deposit is 10 ETB'
+                message: 'Minimum deposit is $1.00 USD'
             });
         }
+        const depositAmount = Number(amount);
         
         const transaction = await Transaction.create({
             userId: req.user._id,
             type: 'deposit',
-            amount: amount,
-            netAmount: amount,
+            amount: depositAmount,
+            netAmount: depositAmount,
             status: 'pending',
             paymentMethod: paymentMethod || 'telebirr'
         });
         
         // Generate Telegram/Telebirr payment link (simplified)
-        const paymentLink = `https://api.telebirr.et/pay?amount=${amount}&reference=${transaction.reference}`;
+        const paymentLink = `https://api.telebirr.et/pay?amount=${depositAmount.toFixed(2)}&reference=${transaction.reference}`;
         
         await WhatsAppService.sendToNumber(
             req.user.phone,
-            `💰 Add Funds to Wallet\nAmount: ${amount} ETB\nReference: ${transaction.reference}\n\nClick to pay: ${paymentLink}\n\nReply with "PAID ${transaction.reference}" after completing payment.`
+            `💰 Add Funds to Wallet\nAmount: $${depositAmount.toFixed(2)} USD\nReference: ${transaction.reference}\n\nClick to pay: ${paymentLink}\n\nReply with "PAID ${transaction.reference}" after completing payment.`
         );
         
         res.json({

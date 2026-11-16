@@ -1,29 +1,34 @@
 const nodemailer = require('nodemailer');
 
 class EmailService {
-    constructor() {
-        this.transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            secure: false,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+    _getTransporter() {
+        if (!this._transporter) {
+            this._transporter = nodemailer.createTransport({
+                host: process.env.EMAIL_HOST,
+                port: Number(process.env.EMAIL_PORT) || 587,
+                secure: false,
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+        }
+        return this._transporter;
     }
 
     async sendEmail(to, subject, html) {
         try {
-            await this.transporter.sendMail({
+            await this._getTransporter().sendMail({
                 from: `"SkillHub" <${process.env.EMAIL_USER}>`,
                 to,
                 subject,
                 html
             });
             console.log(`✅ Email sent to ${to}`);
+            return true;
         } catch (error) {
             console.error('❌ Email error:', error);
+            return false;
         }
     }
 
@@ -77,7 +82,7 @@ class EmailService {
                 <h2>Course Purchase Confirmed!</h2>
                 <p>You have successfully purchased:</p>
                 <h3>${course.title}</h3>
-                <p>Amount: ${course.price} ETB</p>
+                <p>Amount: $${Number(course.price).toFixed(2)} USD</p>
                 <a href="${process.env.FRONTEND_URL}/my-courses">Access your course →</a>
             </div>
         `;

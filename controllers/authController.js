@@ -1,102 +1,153 @@
-const User = require('../models/User');
-const Transaction = require('../models/Transaction');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const prisma = require('../utils/prisma');
 const { generateToken, generateRefreshToken } = require('../middleware/auth');
 const WhatsAppService = require('../utils/whatsappService');
+const EmailService = require('../utils/email');
+
+const mapApiRelations = value => {
+    if (!value) return value;
+    if (Array.isArray(value)) return value.map(mapApiRelations);
+    if (typeof value !== 'object' || value instanceof Date) return value;
+    const mapped = {};
+    for (const [key, nested] of Object.entries(value)) {
+        const apiKey = key === 'freelancer' ? 'freelancerProfile'
+            : key === 'instructor' ? 'instructorId'
+                : key === 'user' ? 'userId'
+                    : key === 'sender' ? 'senderId'
+                        : key === 'receiver' ? 'receiverId'
+                            : key;
+        mapped[apiKey] = mapApiRelations(nested);
+    }
+    if (mapped.id && !mapped._id) mapped._id = mapped.id;
+    return mapped;
+};
+
+const apiUser = (user) => {
+    if (!user) return user;
+    const {
+        id,
+        password,
+        resetCode,
+        resetCodeExpires,
+        ...fields
+    } = user;
+    return mapApiRelations({ ...fields, _id: id, id });
+};
+
+const isUniqueConstraintError = error => error.code === 'P2002';
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 const register = async (req, res) => {
     try {
-        const { name, email, phone, password, role, referralCode } = req.body;
-
-        // Check if user exists — give specific messages
-        const emailExists = await User.findOne({ email });
-        if (emailExists) {
-            return res.status(400).json({
+        const { name, email, username, phone, password, referralCode } = req.body;
+        const role = req.body.role || 'user';
+        const normalizedUsername = typeof username === 'string'
+            ? username.trim().toLowerCase() || undefined
+            : undefined;
+        if (!['user', 'instructor', 'freelancer', 'client'].includes(role)) {
+            return res.status(403).json({
                 success: false,
-                message: 'An account with this email already exists. Please login instead.'
-            });
-        }
-        if (phone) {
-            const phoneExists = await User.findOne({ phone });
-            if (phoneExists) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'This phone number is already registered. Please use a different number or leave it blank.'
-                });
-            }
-        }
-
-        // Create user — learners active immediately, instructors/freelancers need admin approval
-        const user = await User.create({
-            name,
-            email,
-            phone,
-            password,
-            role,
-            status: (role === 'user' || role === 'admin') ? 'active' : 'pending',
-            country: req.body.country || 'ET',
-            bio: req.body.bio || '',
-            skills: req.body.skills || [],
-            profilePicture: req.body.profilePicture || ''
-        });
-
-        // Auto-create freelancer profile if role is freelancer (pending until admin approves)
-        if (role === 'freelancer') {
-            const Freelancer = require('../models/Freelancer');
-            await Freelancer.create({
-                userId: user._id,
-                title: req.body.expertise || 'Freelance Professional',
-                skills: req.body.skills || [],
-                hourlyRate: req.body.hourlyRate || 100,
-                portfolio: req.body.portfolio ? [{ title: 'Portfolio', projectUrl: req.body.portfolio }] : [],
-                status: 'pending',
-                availability: 'available'
+                message: 'This role cannot be assigned during public registration'
             });
         }
 
-        // Handle referral
-        if (referralCode) {
-            const referrer = await User.findOne({ referralCode });
-            if (referrer) {
-                user.referredBy = referrer._id;
-                await user.save();
-                
-                // Give referral bonus
-                await Transaction.create({
-                    userId: referrer._id,
-                    type: 'referral_bonus',
-                    amount: 50,
-                    netAmount: 50,
-                    status: 'completed',
-                    paymentMethod: 'wallet',
-                    description: `Referral bonus for inviting ${name}`
+        const normalizedEmail = email.trim().toLowerCase();
+        let user;
+        try {
+            user = await prisma.$transaction(async tx => {
+                const referrer = referralCode
+                    ? await tx.user.findUnique({ where: { referralCode } })
+                    : null;
+                const createdUser = await tx.user.create({
+                    data: {
+                        name: name.trim(),
+                        email: normalizedEmail,
+                        username: normalizedUsername,
+                        phone: phone || null,
+                        password: await bcrypt.hash(password, 10),
+                        role,
+                        status: ['instructor', 'freelancer'].includes(role) ? 'pending' : 'active',
+                        country: (req.body.country || 'ET').toUpperCase(),
+                        bio: req.body.bio || '',
+                        skills: req.body.skills || [],
+                        profilePicture: req.body.profilePicture || null,
+                        referralCode: `${crypto.randomBytes(6).toString('hex')}_${crypto.randomBytes(3).toString('hex')}`,
+                        referredById: referrer?.id
+                    }
                 });
-                
-                // Update referrer wallet
-                await User.findByIdAndUpdate(referrer._id, { $inc: { walletBalance: 50 } });
+
+                if (role === 'freelancer') {
+                    await tx.freelancer.create({
+                        data: {
+                            userId: createdUser.id,
+                            title: req.body.expertise || 'Freelance Professional',
+                            skills: req.body.skills || [],
+                            hourlyRate: Number(req.body.hourlyRate) || 100,
+                            portfolio: req.body.portfolio
+                                ? [{ title: 'Portfolio', projectUrl: req.body.portfolio }]
+                                : [],
+                            status: 'pending',
+                            availability: 'available'
+                        }
+                    });
+                }
+
+                if (referrer) {
+                    await tx.transaction.create({
+                        data: {
+                            userId: referrer.id,
+                            type: 'referral_bonus',
+                            amount: 50,
+                            netAmount: 50,
+                            status: 'completed',
+                            paymentMethod: 'wallet',
+                            reference: `TXN_${Date.now()}_${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+                            description: `Referral bonus for inviting ${name}`
+                        }
+                    });
+                    await tx.user.update({
+                        where: { id: referrer.id },
+                        data: { walletBalance: { increment: 50 } }
+                    });
+                }
+
+                return createdUser;
+            });
+        } catch (error) {
+            if (isUniqueConstraintError(error)) {
+                const target = error.meta?.target || [];
+                const message = target.includes('email')
+                    ? 'An account with this email already exists. Please login instead.'
+                    : target.includes('username')
+                        ? 'This username is already taken. Please choose another one.'
+                        : 'This phone number is already registered. Please use a different number or leave it blank.';
+                return res.status(400).json({ success: false, message });
             }
+            throw error;
         }
 
         // Send WhatsApp notification to admin
-        const roleEmoji = role === 'instructor' ? '👨‍🏫' : role === 'freelancer' ? '💼' : '🎓';
+        const roleEmoji = role === 'instructor' ? '👨‍🏫' : role === 'freelancer' || role === 'client' ? '💼' : '🎓';
         await WhatsAppService.sendToAdmin(
             `${roleEmoji} New ${role} joined SkillHub!\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nRole: ${role}\n\nThey are now active. Review their profile at:\n${process.env.FRONTEND_URL || 'https://remarkable-semolina-273e83.netlify.app'}`
         );
 
         // Generate token
-        const token = generateToken(user._id);
-        const refreshToken = generateRefreshToken(user._id);
+        const token = generateToken(user.id);
+        const refreshToken = generateRefreshToken(user.id);
 
         res.status(201).json({
             success: true,
             token,
             refreshToken,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
+                username: user.username,
                 phone: user.phone,
                 role: user.role,
                 status: user.status,
@@ -116,10 +167,12 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
-
-        // Check for user
-        const user = await User.findOne({ email }).select('+password');
+        const { identifier: suppliedIdentifier, email, username, password } = req.body;
+        const identifier = (suppliedIdentifier || email || username || '').trim();
+        const where = identifier.includes('@')
+            ? { email: identifier.toLowerCase() }
+            : { username: identifier.toLowerCase() };
+        const user = await prisma.user.findUnique({ where });
         
         if (!user) {
             return res.status(401).json({
@@ -129,7 +182,7 @@ const login = async (req, res) => {
         }
 
         // Check password
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
@@ -138,7 +191,7 @@ const login = async (req, res) => {
         }
 
         // Check if user is suspended
-        if (user.status === 'suspended') {
+        if (['suspended', 'rejected'].includes(user.status)) {
             return res.status(403).json({
                 success: false,
                 message: 'Your account has been suspended. Please contact support.'
@@ -146,21 +199,21 @@ const login = async (req, res) => {
         }
 
         // Update last login
-        user.lastLogin = Date.now();
-        await user.save();
+        await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
 
         // Generate token
-        const token = generateToken(user._id);
-        const refreshToken = generateRefreshToken(user._id);
+        const token = generateToken(user.id);
+        const refreshToken = generateRefreshToken(user.id);
 
         res.json({
             success: true,
             token,
             refreshToken,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
+                username: user.username,
                 phone: user.phone,
                 role: user.role,
                 status: user.status,
@@ -181,14 +234,14 @@ const login = async (req, res) => {
 // @access  Private
 const getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
-            .select('-password')
-            .populate('courses')
-            .populate('freelancerProfile');
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: { courses: true, freelancer: true }
+        });
 
         res.json({
             success: true,
-            user
+            user: apiUser(user)
         });
     } catch (error) {
         res.status(500).json({
@@ -205,28 +258,30 @@ const updateProfile = async (req, res) => {
     try {
         const { name, bio, skills, profilePicture, phone, country } = req.body;
         
-        const user = await User.findById(req.user._id);
-        
-        if (name) user.name = name;
-        if (bio !== undefined) user.bio = bio;
-        if (skills) user.skills = skills;
-        if (profilePicture !== undefined) user.profilePicture = profilePicture;
+        const data = {};
+        if (name) data.name = name.trim();
+        if (bio !== undefined) data.bio = bio;
+        if (skills) data.skills = skills;
+        if (profilePicture !== undefined) data.profilePicture = profilePicture || null;
         if (phone) {
-            // Check phone not taken by another user
-            const phoneExists = await User.findOne({ phone, _id: { $ne: user._id } });
-            if (phoneExists) {
+            data.phone = phone;
+        }
+        if (country) data.country = country.toUpperCase();
+
+        let user;
+        try {
+            user = await prisma.user.update({ where: { id: req.user.id }, data });
+        } catch (error) {
+            if (isUniqueConstraintError(error) && (error.meta?.target || []).includes('phone')) {
                 return res.status(400).json({ success: false, message: 'Phone number already in use' });
             }
-            user.phone = phone;
+            throw error;
         }
-        if (country) user.country = country.toUpperCase();
-        
-        await user.save();
 
         res.json({
             success: true,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
@@ -251,9 +306,8 @@ const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         
-        const user = await User.findById(req.user._id).select('+password');
-        
-        const isMatch = await user.comparePassword(currentPassword);
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        const isMatch = user && await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
@@ -261,8 +315,10 @@ const changePassword = async (req, res) => {
             });
         }
         
-        user.password = newPassword;
-        await user.save();
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: { password: await bcrypt.hash(newPassword, 10) }
+        });
         
         res.json({
             success: true,
@@ -276,36 +332,48 @@ const changePassword = async (req, res) => {
     }
 };
 
-// @desc    Forgot password - send reset code via WhatsApp
+// @desc    Send a password reset code
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res) => {
     try {
-        const { phone } = req.body;
-        
-        const user = await User.findOne({ phone });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found with this phone number'
-            });
-        }
-        
-        // Generate reset code (6 digits)
-        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // Save reset code to user (add field to schema)
-        user.resetCode = resetCode;
-        user.resetCodeExpires = Date.now() + 3600000; // 1 hour
-        await user.save();
-        
-        // Send reset code via WhatsApp
-        await WhatsAppService.sendToNumber(phone, `🔐 Your SkillHub password reset code is: ${resetCode}\nValid for 1 hour.`);
-        
-        res.json({
+        const { email, phone } = req.body;
+        const normalizedEmail = email && email.trim().toLowerCase();
+        const user = normalizedEmail
+            ? await prisma.user.findUnique({ where: { email: normalizedEmail } })
+            : await prisma.user.findUnique({ where: { phone } });
+        const genericResponse = {
             success: true,
-            message: 'Reset code sent to your WhatsApp'
+            message: 'If an account matches, password reset instructions have been sent.'
+        };
+        if (!user) return res.json(genericResponse);
+
+        const resetCode = crypto.randomInt(100000, 1000000).toString();
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { resetCode, resetCodeExpires: new Date(Date.now() + 15 * 60 * 1000) }
         });
+
+        const delivered = normalizedEmail
+            ? await EmailService.sendEmail(
+                user.email,
+                'SkillHub password reset code',
+                `<p>Your SkillHub password reset code is <strong>${resetCode}</strong>.</p><p>It expires in 15 minutes. If you did not request this, you can ignore this message.</p>`
+            )
+            : await WhatsAppService.sendToNumber(
+                user.phone,
+                `Your SkillHub password reset code is: ${resetCode}. It expires in 15 minutes.`
+            );
+
+        if (!delivered) {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { resetCode: null, resetCodeExpires: null }
+            });
+            console.error('Password reset instructions could not be delivered');
+        }
+
+        res.json(genericResponse);
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -319,12 +387,16 @@ const forgotPassword = async (req, res) => {
 // @access  Public
 const resetPassword = async (req, res) => {
     try {
-        const { phone, code, newPassword } = req.body;
-        
-        const user = await User.findOne({
-            phone,
-            resetCode: code,
-            resetCodeExpires: { $gt: Date.now() }
+        const { email, phone, code, newPassword } = req.body;
+        const identity = email
+            ? { email: email.trim().toLowerCase() }
+            : { phone };
+        const user = await prisma.user.findFirst({
+            where: {
+                ...identity,
+                resetCode: code,
+                resetCodeExpires: { gt: new Date() }
+            }
         });
         
         if (!user) {
@@ -334,10 +406,14 @@ const resetPassword = async (req, res) => {
             });
         }
         
-        user.password = newPassword;
-        user.resetCode = undefined;
-        user.resetCodeExpires = undefined;
-        await user.save();
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: await bcrypt.hash(newPassword, 10),
+                resetCode: null,
+                resetCodeExpires: null
+            }
+        });
         
         res.json({
             success: true,

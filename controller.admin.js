@@ -124,7 +124,7 @@ const approveUser = async (req, res) => {
         // Send WhatsApp notification
         await WhatsAppService.sendToNumber(
             user.phone,
-            `🎉 Congratulations! Your ${role || user.role} application has been APPROVED on SkillHub.\n\n${message || 'You can now start creating courses and earning money.'}\n\nLogin to your dashboard: ${process.env.FRONTEND_URL}`
+            ` Congratulations! Your ${role || user.role} application has been APPROVED on SkillHub.\n\n${message || 'You can now start creating courses and earning money.'}\n\nLogin to your dashboard: ${process.env.FRONTEND_URL}`
         );
         
         res.json({

@@ -5,24 +5,13 @@ const errorHandler = (err, req, res, next) => {
     // Log error for debugging
     console.error('❌ Error:', err);
 
-    // Mongoose bad ObjectId
-    if (err.name === 'CastError') {
-        const message = 'Resource not found';
-        error = { message, statusCode: 404 };
+    if (err.code === 'P2002') {
+        const field = Array.isArray(err.meta?.target) ? err.meta.target[0] : 'Resource';
+        error = { message: `${field} already exists`, statusCode: 400 };
     }
-
-    // Mongoose duplicate key
-    if (err.code === 11000) {
-        const field = Object.keys(err.keyPattern)[0];
-        const message = `${field} already exists`;
-        error = { message, statusCode: 400 };
-    }
-
-    // Mongoose validation error
-    if (err.name === 'ValidationError') {
-        const message = Object.values(err.errors).map(val => val.message).join(', ');
-        error = { message, statusCode: 400 };
-    }
+    if (err.code === 'P2025') error = { message: 'Resource not found', statusCode: 404 };
+    if (err.code === 'P2003') error = { message: 'Related resource does not exist', statusCode: 400 };
+    if (err.name === 'PrismaClientValidationError') error = { message: err.message, statusCode: 400 };
 
     // JWT errors
     if (err.name === 'JsonWebTokenError') {

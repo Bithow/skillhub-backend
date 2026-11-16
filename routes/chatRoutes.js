@@ -7,6 +7,8 @@ const {
     getConversation,
     getConversations,
     getUnreadCount,
+    sendTypingSignal,
+    getTypingStatus,
     adminGetAllConversations,
     adminGetConversation,
     deleteMessage
@@ -19,6 +21,8 @@ router.use(protect);
 router.post('/send', sendMessage);
 router.get('/conversations', getConversations);
 router.get('/unread', getUnreadCount);
+router.post('/typing', sendTypingSignal);
+router.get('/typing/:userId', getTypingStatus);
 router.get('/conversation/:userId', getConversation);
 router.delete('/message/:id', deleteMessage);
 

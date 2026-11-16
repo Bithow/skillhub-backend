@@ -35,7 +35,7 @@ const createCourse = async (req, res) => {
         
         // Notify admin via WhatsApp
         await WhatsAppService.sendToAdmin(
-            `📚 New Course Pending Approval\nTitle: ${title}\nInstructor: ${user.name}\nPrice: ${price} ETB`
+            `📚 New Course Pending Approval\nTitle: ${title}\nInstructor: ${user.name}\nPrice: $${Number(price).toFixed(2)} USD`
         );
         
         res.status(201).json({
@@ -246,7 +246,7 @@ const purchaseCourse = async (req, res) => {
         });
         
         // Send WhatsApp payment link/message
-        const paymentMessage = `🎓 Course Purchase: ${course.title}\n💰 Amount: ${course.price} ETB\n📝 Reference: ${transaction.reference}\n\nSend payment to: 09XX-XXXXXX (Telebirr/CBE)\nReply with "PAID ${transaction.reference}" after payment`;
+        const paymentMessage = `🎓 Course Purchase: ${course.title}\n💰 Amount: $${Number(course.price).toFixed(2)} USD\n📝 Reference: ${transaction.reference}\n\nComplete your payment using the listed payment method, then reply with "PAID ${transaction.reference}"`;
         
         await WhatsAppService.sendToNumber(req.user.phone, paymentMessage);
         

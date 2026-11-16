@@ -30,8 +30,8 @@ const freelancerSchema = new mongoose.Schema({
     hourlyRate: {
         type: Number,
         required: [true, 'Hourly rate is required'],
-        min: [50, 'Rate must be at least 50 ETB'],
-        max: [10000, 'Rate cannot exceed 10,000 ETB']
+        min: [1, 'Hourly rate must be at least $1.00 USD'],
+        max: [10000, 'Hourly rate cannot exceed $10,000 USD']
     },
     portfolio: [{
         title: String,

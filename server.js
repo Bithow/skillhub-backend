@@ -6,6 +6,7 @@ const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/database');
+const prisma = require('./utils/prisma');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Import routes
@@ -16,12 +17,13 @@ const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const userRoutes = require('./routes/userRoutes');
+const contactRoutes = require('./routes/contactRoutes');
+const { startAiStudioWorker } = require('./services/aiStudioWorker');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 // Initialize app
 const app = express();
-
-// Connect to MongoDB
-connectDB();
 
 // Security middleware
 app.use(helmet());
@@ -72,6 +74,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -102,18 +107,15 @@ app.get('/', (req, res) => {
 // Public stats endpoint (no auth required)
 app.get('/api/stats', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        const User = require('./models/User');
-        const Course = require('./models/Course');
-        const Freelancer = require('./models/Freelancer');
-        const [totalUsers, totalCourses, totalFreelancers] = await Promise.all([
-            User.countDocuments({ status: 'active' }),
-            Course.countDocuments({ status: 'published' }),
-            Freelancer.countDocuments({ status: 'approved' })
+        const [totalUsers, totalCourses, totalFreelancers, totalInstructors] = await Promise.all([
+            prisma.user.count({ where: { role: 'user', status: 'active' } }),
+            prisma.course.count({ where: { status: 'published' } }),
+            prisma.freelancer.count({ where: { status: 'approved' } }),
+            prisma.user.count({ where: { role: 'instructor', status: 'active' } })
         ]);
-        res.json({ success: true, stats: { totalUsers, totalCourses, totalFreelancers } });
+        res.json({ success: true, stats: { totalUsers, totalCourses, totalFreelancers, totalInstructors } });
     } catch (e) {
-        res.json({ success: false, stats: { totalUsers: 1000, totalCourses: 500, totalFreelancers: 100 } });
+        res.status(500).json({ success: false, message: 'Could not load platform statistics.' });
     }
 });
 
@@ -121,12 +123,24 @@ app.get('/api/stats', async (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 Local: http://localhost:${PORT}`);
-    console.log(`🌐 Network: http://192.168.137.1:${PORT}`);
-    console.log(`📱 Phone Access: Open http://192.168.137.1:5500 on your phone`);
-});
+const startServer = async () => {
+    if (!process.env.NODE_ENV || process.env.NODE_ENV !== 'production') {
+        console.warn('Warning: NODE_ENV is not set to "production". Stack traces will be exposed in error responses.');
+    }
+    await connectDB();
+    await startAiStudioWorker();
+    const PORT = process.env.PORT || 5000;
+    return app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+};
+
+if (require.main === module) {
+    startServer().catch(error => {
+        console.error(`Database startup failed: ${error.message}`);
+        process.exit(1);
+    });
+}
+
+module.exports = { app, startServer };

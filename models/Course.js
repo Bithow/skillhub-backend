@@ -22,7 +22,6 @@ const courseSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Price is required'],
         min: [0, 'Price cannot be negative'],
-        max: [50000, 'Price cannot exceed 50,000 ETB']
     },
     category: {
         type: String,
@@ -97,7 +96,7 @@ const courseSchema = new mongoose.Schema({
     discussion: [{
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         userName: String,
-        message: String,
+        message: { type: String, trim: true, maxlength: 2000 },
         createdAt: { type: Date, default: Date.now }
     }],
     isFeatured: {

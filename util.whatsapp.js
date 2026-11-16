@@ -47,7 +47,7 @@ class WhatsAppService {
 
     // Send course purchase confirmation
     async sendCoursePurchaseConfirmation(userPhone, courseTitle, amount, reference) {
-        const message = `🎉 *Course Purchase Confirmed!*\n\n📚 Course: ${courseTitle}\n💰 Amount: ${amount} ETB\n📝 Reference: ${reference}\n\nYou can now access your course in your dashboard.\n\nThank you for learning with SkillHub! 🚀`;
+        const message = `🎉 *Course Purchase Confirmed!*\n\n📚 Course: ${courseTitle}\n💰 Amount: $${Number(amount).toFixed(2)} USD\n📝 Reference: ${reference}\n\nYou can now access your course in your dashboard.\n\nThank you for learning with SkillHub! 🚀`;
         return this.sendToNumber(userPhone, message);
     }
 
@@ -65,15 +65,15 @@ class WhatsAppService {
 
     // Send payment reminder
     async sendPaymentReminder(phone, reference, amount) {
-        const message = `⏰ *Payment Reminder*\n\nTransaction Reference: ${reference}\nAmount: ${amount} ETB\n\nPlease complete your payment to access the course.\n\nSend payment to: 09XX-XXXXXX (Telebirr/CBE)\nThen reply with "PAID ${reference}"`;
+        const message = `⏰ *Payment Reminder*\n\nTransaction Reference: ${reference}\nAmount: $${Number(amount).toFixed(2)} USD\n\nPlease complete your payment using the listed payment method, then reply with "PAID ${reference}"`;
         return this.sendToNumber(phone, message);
     }
 
     // Send withdrawal notification
     async sendWithdrawalNotification(phone, amount, status) {
         const message = status === 'completed' 
-            ? `💰 *Withdrawal Completed!*\n\nAmount: ${amount} ETB has been sent to your account.\n\nThank you for being part of SkillHub! 🚀`
-            : `❌ *Withdrawal Failed*\n\nAmount: ${amount} ETB\n\nPlease contact support for assistance.`;
+            ? `💰 *Withdrawal Completed!*\n\nAmount: $${Number(amount).toFixed(2)} USD has been sent to your account.\n\nThank you for being part of SkillHub! 🚀`
+            : `❌ *Withdrawal Failed*\n\nAmount: $${Number(amount).toFixed(2)} USD\n\nPlease contact support for assistance.`;
         return this.sendToNumber(phone, message);
     }
 

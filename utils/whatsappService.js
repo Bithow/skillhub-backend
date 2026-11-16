@@ -9,10 +9,26 @@ class WhatsAppService {
     // Send message to a single number
     async sendToNumber(phoneNumber, message) {
         try {
-            // Format phone number (remove +, ensure correct format)
-            let cleanNumber = phoneNumber.toString().replace(/\D/g, '');
-            if (!cleanNumber.startsWith('251') && cleanNumber.length === 10) {
+            // Strip everything except digits and leading +
+            let raw = String(phoneNumber).trim();
+            let cleanNumber = raw.replace(/\D/g, '');
+
+            // Country-specific normalisation for 10-digit local numbers
+            // Ethiopia (09xxxxxxxx or 07xxxxxxxx → 2519/2517xxxxxxxx)
+            if (cleanNumber.length === 10 && (cleanNumber.startsWith('09') || cleanNumber.startsWith('07'))) {
                 cleanNumber = '251' + cleanNumber.substring(1);
+            }
+            // Kenya (07xxxxxxxx or 01xxxxxxxx → 254xxxxxxxx)
+            else if (cleanNumber.length === 10 && (cleanNumber.startsWith('07') || cleanNumber.startsWith('01'))) {
+                cleanNumber = '254' + cleanNumber.substring(1);
+            }
+            // Uganda (07xxxxxxxx → 256xxxxxxxx)
+            else if (cleanNumber.length === 10 && cleanNumber.startsWith('07')) {
+                cleanNumber = '256' + cleanNumber.substring(1);
+            }
+            // If raw started with + and we didn't reformat, trust it as-is
+            else if (raw.startsWith('+')) {
+                cleanNumber = raw.replace(/\D/g, '');
             }
             
             const data = {
@@ -47,7 +63,7 @@ class WhatsAppService {
 
     // Send course purchase confirmation
     async sendCoursePurchaseConfirmation(userPhone, courseTitle, amount, reference) {
-        const message = `🎉 *Course Purchase Confirmed!*\n\n📚 Course: ${courseTitle}\n💰 Amount: ${amount} ETB\n📝 Reference: ${reference}\n\nYou can now access your course in your dashboard.\n\nThank you for learning with SkillHub! 🚀`;
+        const message = `🎉 *Course Purchase Confirmed!*\n\n📚 Course: ${courseTitle}\n💰 Amount: $${Number(amount).toFixed(2)} USD\n📝 Reference: ${reference}\n\nYou can now access your course in your dashboard.\n\nThank you for learning with SkillHub! 🚀`;
         return this.sendToNumber(userPhone, message);
     }
 
@@ -65,15 +81,15 @@ class WhatsAppService {
 
     // Send payment reminder
     async sendPaymentReminder(phone, reference, amount) {
-        const message = `⏰ *Payment Reminder*\n\nTransaction Reference: ${reference}\nAmount: ${amount} ETB\n\nPlease complete your payment to access the course.\n\nSend payment to: 09XX-XXXXXX (Telebirr/CBE)\nThen reply with "PAID ${reference}"`;
+        const message = `⏰ *Payment Reminder*\n\nTransaction Reference: ${reference}\nAmount: $${Number(amount).toFixed(2)} USD\n\nPlease complete your payment using the listed payment method, then reply with "PAID ${reference}"`;
         return this.sendToNumber(phone, message);
     }
 
     // Send withdrawal notification
     async sendWithdrawalNotification(phone, amount, status) {
         const message = status === 'completed' 
-            ? `💰 *Withdrawal Completed!*\n\nAmount: ${amount} ETB has been sent to your account.\n\nThank you for being part of SkillHub! 🚀`
-            : `❌ *Withdrawal Failed*\n\nAmount: ${amount} ETB\n\nPlease contact support for assistance.`;
+            ? `💰 *Withdrawal Completed!*\n\nAmount: $${Number(amount).toFixed(2)} USD has been sent to your account.\n\nThank you for being part of SkillHub! 🚀`
+            : `❌ *Withdrawal Failed*\n\nAmount: $${Number(amount).toFixed(2)} USD\n\nPlease contact support for assistance.`;
         return this.sendToNumber(phone, message);
     }
 

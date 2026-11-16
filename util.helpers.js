@@ -13,11 +13,11 @@ const calculateCommission = (amount, rate = 0.20) => {
 };
 
 // Format Ethiopian Birr
-const formatETB = (amount) => {
-    return new Intl.NumberFormat('am-ET', {
+const formatUSD = (amount) => {
+    return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'ETB',
-        minimumFractionDigits: 0,
+        currency: 'USD',
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(amount);
 };
@@ -90,7 +90,7 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 module.exports = {
     generateReference,
     calculateCommission,
-    formatETB,
+    formatUSD,
     validateEthiopianPhone,
     formatPhoneForWhatsApp,
     calculateAverageRating,

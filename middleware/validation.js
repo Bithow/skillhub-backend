@@ -16,13 +16,29 @@ const userValidation = {
     register: [
         body('name').notEmpty().withMessage('Name is required').isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
         body('email').isEmail().withMessage('Please enter a valid email'),
+        body('username').optional({ checkFalsy: true }).matches(/^[a-zA-Z0-9._-]{3,30}$/).withMessage('Username must be 3-30 characters and use letters, numbers, dots, underscores, or hyphens'),
         body('phone').optional({ nullable: true, checkFalsy: true }),
         body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-        body('role').isIn(['user', 'instructor', 'freelancer', 'admin']).withMessage('Invalid role')
+        body('role').optional().isIn(['user', 'instructor', 'freelancer', 'client']).withMessage('Invalid role')
     ],
     login: [
-        body('email').isEmail().withMessage('Please enter a valid email'),
+        body('identifier').optional({ checkFalsy: true }).isString().trim(),
+        body('email').optional({ checkFalsy: true }).isEmail().withMessage('Please enter a valid email'),
+        body('username').optional({ checkFalsy: true }).isString().trim(),
+        body().custom((_, { req }) => Boolean(req.body.identifier || req.body.email || req.body.username)).withMessage('Email or username is required'),
         body('password').notEmpty().withMessage('Password is required')
+    ],
+    forgotPassword: [
+        body('email').optional({ checkFalsy: true }).isEmail().withMessage('Please enter a valid email'),
+        body('phone').optional({ checkFalsy: true }).isString().trim(),
+        body().custom((_, { req }) => Boolean(req.body.email || req.body.phone)).withMessage('Email or phone is required')
+    ],
+    resetPassword: [
+        body('email').optional({ checkFalsy: true }).isEmail().withMessage('Please enter a valid email'),
+        body('phone').optional({ checkFalsy: true }).isString().trim(),
+        body().custom((_, { req }) => Boolean(req.body.email || req.body.phone)).withMessage('Email or phone is required'),
+        body('code').matches(/^\d{6}$/).withMessage('Reset code must be six digits'),
+        body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
     ],
     updateProfile: [
         body('name').optional().isLength({ min: 2 }),
@@ -52,7 +68,8 @@ const freelancerValidation = {
     create: [
         body('title').notEmpty().withMessage('Professional title is required'),
         body('skills').isArray().withMessage('Skills must be an array'),
-        body('hourlyRate').isNumeric().withMessage('Hourly rate must be a number').isFloat({ min: 50 })
+        body('hourlyRate').custom(value => Number.isFinite(Number(value)) && Number(value) >= 0)
+            .withMessage('Hourly rate must be a nonnegative finite number')
     ]
 };
 

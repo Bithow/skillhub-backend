@@ -1,19 +1,10 @@
-const mongoose = require('mongoose');
+const prisma = require('../utils/prisma');
 
 const connectDB = async () => {
-    try {
-        const uri = process.env.MONGODB_URI;
-        if (!uri) {
-            console.error('❌ MONGODB_URI environment variable is not set!');
-            return;
-        }
-        console.log('🔗 Connecting to MongoDB Atlas...');
-        const conn = await mongoose.connect(uri);
-        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    } catch (error) {
-        console.error(`❌ Error: ${error.message}`);
-        // Don't exit — let server keep running so health check works
-    }
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL environment variable is not set');
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('Connected to PostgreSQL');
 };
 
 module.exports = connectDB;

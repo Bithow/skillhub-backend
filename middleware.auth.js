@@ -35,14 +35,17 @@ const protect = async (req, res, next) => {
     }
 };
 
+const jwtSecret = process.env.JWT_SECRET || 'skillhub-dev-secret';
+const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
+
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN
+    return jwt.sign({ id }, jwtSecret, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 };
 
 const generateRefreshToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
+    return jwt.sign({ id }, jwtRefreshSecret, {
         expiresIn: '30d'
     });
 };

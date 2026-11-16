@@ -44,7 +44,15 @@ const transactionSchema = new mongoose.Schema({
         courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
         freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Freelancer' },
         projectId: { type: mongoose.Schema.Types.ObjectId },
-        whatsappMessageId: String
+        whatsappMessageId: String,
+        paymentProof: String,
+        phoneNumber: String,
+        balanceReserved: Boolean,
+        paymentReference: String,
+        payerName: String,
+        payerPhone: String,
+        paymentMethodLabel: String,
+        paymentNotes: String
     },
     completedAt: {
         type: Date,
